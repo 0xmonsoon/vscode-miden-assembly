@@ -38,18 +38,7 @@ cp -r . ~/.cursor/extensions/dlock.miden-assembly-0.2.0
 
 Then reload Cursor: `Cmd+Shift+P` → "Reload Window"
 
-### From Source (for VS Code)
-
-```bash
-git clone https://github.com/0xmonsoon/vscode-miden-assembly
-cd vscode-miden-assembly
-npm install
-npm run compile
-```
-
-Then press F5 in VS Code to launch the extension in development mode.
-
-### Building VSIX
+### Building VSIX (for all other Code Editors)
 
 ```bash
 npm install -g @vscode/vsce
