@@ -8,7 +8,7 @@ This VSCode/Cursor extension provides language support for the Miden Assembly la
 The tmLanguage grammar is comprehensive and includes all VM opcodes supported by Miden.
 
 ### Go to Definition (Cmd/Ctrl+Click)
-Navigate to definitions by clicking on:
+Navigate to definitions by clicking on imports, procedure calls, and constants.
 
 ### Hover Information
 Hover over procedure names to see their documentation comments.
@@ -17,9 +17,64 @@ Hover over procedure names to see their documentation comments.
 - Ignores clicks inside string literals (`"..."`)
 - Ignores clicks inside comments (`# ...`)
 
-## Limitations
+## Module Resolution
 
-Module resolution uses heuristics optimized for the `miden-base` codebase structure, not the actual MASM assembler resolution rules. It searches common locations like `lib/`, `shared_modules/`, and cargo cache rather than parsing build configuration.
+The extension resolves import paths based on [MASM module semantics](https://docs.miden.xyz/next/miden-vm/user_docs/assembly/code_organization):
+
+| Import Pattern | Resolution |
+|---------------|------------|
+| `miden::X::Y` | Parses `build.rs` → local `asm/` or cargo cache |
+| `miden::core::*` | External: cargo cache `miden-core-lib` |
+| `std::X::Y` | External: cargo cache `miden-stdlib` |
+| `$alias::module` | Relative: `lib/module.masm` |
+| `bare_module` | Relative: `./module.masm` |
+
+### How It Works
+
+#### 1. Automatic Namespace Detection from `build.rs`
+
+The extension **parses `build.rs` files** in your workspace to extract namespace definitions:
+
+```rust
+// build.rs
+const PROTOCOL_LIB_NAMESPACE: &str = "miden::protocol";
+const ASM_PROTOCOL_DIR: &str = "protocol";
+```
+
+This tells the extension that `miden::protocol::*` imports resolve to `asm/protocol/` in that crate.
+
+#### 2. Resolution Order
+
+For `use miden::X::Y::Z`:
+
+1. **Parse `build.rs`** in all `crates/*/build.rs` files
+2. If `miden::X` namespace found → use that crate's `asm/{dir}/Y/Z.masm`
+3. If not found → search all `crates/*/asm/X/Y/Z.masm`
+4. If still not found → check cargo cache for `miden-X-lib` or `miden-X`
+
+#### 3. Known External Namespaces
+
+These always resolve from cargo cache (never local):
+- `miden::core::*` → `miden-core-lib`
+- `std::*` → `miden-stdlib`
+
+### Example
+
+Given this workspace structure:
+```
+my-project/
+├── Cargo.toml (workspace)
+├── crates/
+│   ├── my-protocol/
+│   │   ├── build.rs          # defines MYLIB_LIB_NAMESPACE = "miden::mylib"
+│   │   └── asm/mylib/
+│   │       └── utils.masm
+```
+
+The extension will automatically resolve:
+```masm
+use miden::mylib::utils  # → crates/my-protocol/asm/mylib/utils.masm
+```
 
 ## Installation
 
@@ -38,7 +93,7 @@ cp -r . ~/.cursor/extensions/dlock.miden-assembly-0.2.0
 
 Then reload Cursor: `Cmd+Shift+P` → "Reload Window"
 
-### Building VSIX (for all other Code Editors)
+### Building VSIX (for other editors)
 
 ```bash
 npm install -g @vscode/vsce
@@ -49,8 +104,11 @@ This creates a `.vsix` file you can install via `Extensions: Install from VSIX..
 
 ## Requirements
 
-For external dependency navigation (`miden::*` imports), run `cargo fetch` in your Miden project to download dependencies to the cargo cache.
+For external dependency navigation (`miden::core::*`, `std::*`), run `cargo fetch` in your Miden project to download dependencies to the cargo cache.
 
+## References
+
+- [MASM Code Organization](https://docs.miden.xyz/next/miden-vm/user_docs/assembly/code_organization)
 
 ## TODO
 
