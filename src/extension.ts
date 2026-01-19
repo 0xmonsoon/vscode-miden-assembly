@@ -284,6 +284,26 @@ function findNamespaceAsmDir(workspaceRoot: string, namespace: string): { crateD
 }
 
 /**
+ * Try to find a module file - checks both direct file and mod.masm in directory
+ * e.g., for "faucets", tries: faucets.masm, faucets/mod.masm
+ */
+function tryModulePaths(basePath: string, subPath: string): string | null {
+    // Try direct file path first
+    const directPath = path.join(basePath, subPath);
+    if (fs.existsSync(directPath)) {
+        return directPath;
+    }
+    
+    // Try as directory with mod.masm
+    const modPath = path.join(basePath, subPath.replace(/\.masm$/, ''), 'mod.masm');
+    if (fs.existsSync(modPath)) {
+        return modPath;
+    }
+    
+    return null;
+}
+
+/**
  * Search for a file in cargo cache for a specific crate
  */
 function searchCargoCache(crateName: string, subPath: string): string | null {
@@ -307,10 +327,9 @@ function searchCargoCache(crateName: string, subPath: string): string | null {
                 entries.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
                 
                 for (const version of entries) {
-                    const fullPath = path.join(indexPath, version, 'asm', subPath);
-                    if (fs.existsSync(fullPath)) {
-                        return fullPath;
-                    }
+                    const asmDir = path.join(indexPath, version, 'asm');
+                    const result = tryModulePaths(asmDir, subPath);
+                    if (result) return result;
                 }
             }
         }
@@ -367,10 +386,8 @@ function resolveModulePath(currentFile: string, moduleName: string, importPath: 
                 
                 if (nsInfo) {
                     // Found in build.rs - use the exact crate and directory
-                    const localPath = path.join(nsInfo.crateDir, 'asm', nsInfo.asmSubDir, subPath);
-                    if (fs.existsSync(localPath)) {
-                        result = localPath;
-                    }
+                    const baseDir = path.join(nsInfo.crateDir, 'asm', nsInfo.asmSubDir);
+                    result = tryModulePaths(baseDir, subPath);
                     
                     // If not found at expected path, search all subdirectories under asm/
                     if (!result) {
@@ -381,11 +398,8 @@ function resolveModulePath(currentFile: string, moduleName: string, importPath: 
                                 for (const subdir of subdirs) {
                                     const subdirPath = path.join(asmDir, subdir);
                                     if (fs.statSync(subdirPath).isDirectory()) {
-                                        const searchPath = path.join(subdirPath, subPath);
-                                        if (fs.existsSync(searchPath)) {
-                                            result = searchPath;
-                                            break;
-                                        }
+                                        result = tryModulePaths(subdirPath, subPath);
+                                        if (result) break;
                                     }
                                 }
                             } catch (e) {}
@@ -401,11 +415,9 @@ function resolveModulePath(currentFile: string, moduleName: string, importPath: 
                             const crates = fs.readdirSync(cratesDir);
                             for (const crate of crates) {
                                 // First try direct namespace match
-                                const cratePath = path.join(cratesDir, crate, 'asm', namespace, subPath);
-                                if (fs.existsSync(cratePath)) {
-                                    result = cratePath;
-                                    break;
-                                }
+                                const namespaceDir = path.join(cratesDir, crate, 'asm', namespace);
+                                result = tryModulePaths(namespaceDir, subPath);
+                                if (result) break;
                                 
                                 // Then search all subdirectories
                                 const asmDir = path.join(cratesDir, crate, 'asm');
@@ -414,11 +426,8 @@ function resolveModulePath(currentFile: string, moduleName: string, importPath: 
                                     for (const subdir of subdirs) {
                                         const subdirPath = path.join(asmDir, subdir);
                                         if (fs.statSync(subdirPath).isDirectory()) {
-                                            const searchPath = path.join(subdirPath, subPath);
-                                            if (fs.existsSync(searchPath)) {
-                                                result = searchPath;
-                                                break;
-                                            }
+                                            result = tryModulePaths(subdirPath, subPath);
+                                            if (result) break;
                                         }
                                     }
                                     if (result) break;
