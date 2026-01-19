@@ -1,31 +1,54 @@
 {
-  "name": "miden-assembly",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/daedlock/vscode-miden-assembly"
-  },
-  "displayName": "miden-assembly",
-  "description": "Miden Assembly",
-  "icon": "./assets/logo.png",
-  "version": "0.1.1",
-  "engines": {
-    "vscode": "^1.86.0"
-  },
-  "publisher": "dlock",
-  "categories": [
-    "Programming Languages"
-  ],
-  "contributes": {
-    "languages": [{
-      "id": "masm",
-      "aliases": ["Miden Assembly", "masm"],
-      "extensions": ["masm"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "masm",
-      "scopeName": "source.masm",
-      "path": "./syntaxes/masm.tmLanguage.json"
-    }]
-  }
+	"name": "miden-assembly",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/daedlock/vscode-miden-assembly"
+	},
+	"displayName": "miden-assembly",
+	"description": "Miden Assembly language support with Go to Definition",
+	"icon": "./assets/logo.png",
+	"version": "0.2.0",
+	"engines": {
+		"vscode": "^1.86.0"
+	},
+	"publisher": "dlock",
+	"categories": [
+		"Programming Languages"
+	],
+	"activationEvents": [
+		"onLanguage:masm"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"languages": [
+			{
+				"id": "masm",
+				"aliases": [
+					"Miden Assembly",
+					"masm"
+				],
+				"extensions": [
+					"masm"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "masm",
+				"scopeName": "source.masm",
+				"path": "./syntaxes/masm.tmLanguage.json"
+			}
+		]
+	},
+	"scripts": {
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"package": "vsce package"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.86.0",
+		"@types/node": "^20.0.0",
+		"typescript": "^5.0.0"
+	}
 }
